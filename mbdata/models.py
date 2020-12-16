@@ -1483,6 +1483,38 @@ class EventType(Base):
     parent = relationship('EventType', foreign_keys=[parent_id])
 
 
+class ReleaseFirstReleaseDate(Base):
+    __tablename__ = 'release_first_release_date'
+    __table_args__ = (
+        {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
+    )
+
+    release_id = Column('release', Integer, ForeignKey(apply_schema('release.id', 'musicbrainz'), name='release_first_release_date_fk_release', ondelete='CASCADE'), nullable=False, primary_key=True)
+    year = Column(SMALLINT)
+    month = Column(SMALLINT)
+    day = Column(SMALLINT)
+
+    release = relationship('Release', foreign_keys=[release_id], innerjoin=True, backref=backref('first_release', uselist=False))
+
+    date = composite(PartialDate, year, month, day)
+
+
+class RecordingFirstReleaseDate(Base):
+    __tablename__ = 'recording_first_release_date'
+    __table_args__ = (
+        {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
+    )
+
+    recording_id = Column('recording', Integer, ForeignKey(apply_schema('recording.id', 'musicbrainz'), name='recording_first_release_date_fk_recording', ondelete='CASCADE'), nullable=False, primary_key=True)
+    year = Column(SMALLINT)
+    month = Column(SMALLINT)
+    day = Column(SMALLINT)
+
+    recording = relationship('Recording', foreign_keys=[recording_id], innerjoin=True, backref=backref('first_release', uselist=False))
+
+    date = composite(PartialDate, year, month, day)
+
+
 class Gender(Base):
     __tablename__ = 'gender'
     __table_args__ = (
@@ -5579,6 +5611,8 @@ class EditorOauthToken(Base):
     expire_time = Column(DateTime(timezone=True), nullable=False)
     scope = Column(Integer, nullable=False, default=0, server_default=sql.text('0'))
     granted = Column(DateTime(timezone=True), nullable=False, server_default=sql.func.now())
+    code_challenge = Column(String)
+    code_challenge_method = Column(Enum('plain', 'S256', name='OAUTH_CODE_CHALLENGE_METHOD', schema=mbdata.config.schemas.get('musicbrainz', 'musicbrainz')))
 
     editor = relationship('Editor', foreign_keys=[editor_id], innerjoin=True)
     application = relationship('Application', foreign_keys=[application_id], innerjoin=True)
