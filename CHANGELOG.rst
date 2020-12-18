@@ -1,3 +1,10 @@
+Version 26.0.dev3
+=================
+
+- Updated to MusicBrainz Server v-2020-12-16 which already supports
+  the earliest parts of the future MusicBrainz database schema 26:
+  first release date of recording/release and more...
+
 Version 25.0.4
 ==============
 
