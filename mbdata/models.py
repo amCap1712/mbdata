@@ -604,7 +604,6 @@ class ArtistTag(Base):
 class ArtistRatingRaw(Base):
     __tablename__ = 'artist_rating_raw'
     __table_args__ = (
-        Index('artist_rating_raw_idx_artist', 'artist'),
         Index('artist_rating_raw_idx_editor', 'editor'),
         {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
     )
@@ -1278,7 +1277,6 @@ class EventMeta(Base):
 class EventRatingRaw(Base):
     __tablename__ = 'event_rating_raw'
     __table_args__ = (
-        Index('event_rating_raw_idx_event', 'event'),
         Index('event_rating_raw_idx_editor', 'editor'),
         {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
     )
@@ -4935,7 +4933,6 @@ class Label(Base):
 class LabelRatingRaw(Base):
     __tablename__ = 'label_rating_raw'
     __table_args__ = (
-        Index('label_rating_raw_idx_label', 'label'),
         Index('label_rating_raw_idx_editor', 'editor'),
         {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
     )
@@ -5196,7 +5193,7 @@ class Language(Base):
     iso_code_2b = Column(CHAR(3))
     iso_code_1 = Column(CHAR(2))
     name = Column(String(100), nullable=False)
-    frequency = Column(Integer, nullable=False, default=0, server_default=sql.text('0'))
+    frequency = Column(SMALLINT, nullable=False, default=0, server_default=sql.text('0'))
     iso_code_3 = Column(CHAR(3))
 
 
@@ -5329,8 +5326,8 @@ class LinkType(Base):
     last_updated = Column(DateTime(timezone=True), server_default=sql.func.now())
     is_deprecated = Column(Boolean, nullable=False, default=False, server_default=sql.false())
     has_dates = Column(Boolean, nullable=False, default=True, server_default=sql.true())
-    entity0_cardinality = Column(Integer, nullable=False, default=0, server_default=sql.text('0'))
-    entity1_cardinality = Column(Integer, nullable=False, default=0, server_default=sql.text('0'))
+    entity0_cardinality = Column(SMALLINT, nullable=False, default=0, server_default=sql.text('0'))
+    entity1_cardinality = Column(SMALLINT, nullable=False, default=0, server_default=sql.text('0'))
 
     parent = relationship('LinkType', foreign_keys=[parent_id])
 
@@ -6703,7 +6700,6 @@ class ReleaseGroupAlias(Base):
 class ReleaseGroupRatingRaw(Base):
     __tablename__ = 'release_group_rating_raw'
     __table_args__ = (
-        Index('release_group_rating_raw_idx_release_group', 'release_group'),
         Index('release_group_rating_raw_idx_editor', 'editor'),
         {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
     )
@@ -6920,7 +6916,7 @@ class Script(Base):
     iso_code = Column(CHAR(4), nullable=False)
     iso_number = Column(CHAR(3), nullable=False)
     name = Column(String(100), nullable=False)
-    frequency = Column(Integer, nullable=False, default=0, server_default=sql.text('0'))
+    frequency = Column(SMALLINT, nullable=False, default=0, server_default=sql.text('0'))
 
 
 class Series(Base):
@@ -8682,18 +8678,6 @@ class LinkTypeDocumentation(Base):
     examples_deleted = Column(SMALLINT, nullable=False, default=0, server_default=sql.text('0'))
 
     link_type = relationship('LinkType', foreign_keys=[id], innerjoin=True)
-
-
-class LogStatistic(Base):
-    __tablename__ = 'log_statistic'
-    __table_args__ = (
-        {'schema': mbdata.config.schemas.get('statistics', 'statistics')}
-    )
-
-    name = Column(String, nullable=False, primary_key=True)
-    category = Column(String, nullable=False, primary_key=True)
-    timestamp = Column(DateTime(timezone=True), nullable=False, primary_key=True, server_default=sql.func.now())
-    data = Column(String, nullable=False)
 
 
 class Statistic(Base):
