@@ -6,11 +6,11 @@ import os
 import re
 import sqlparse
 import six
+import sys
 from sqlparse import tokens as T
 from sqlparse.sql import TokenList, Parenthesis
 from typing import List
 from mbdata.utils.sql import CreateTable, CreateType, CreateIndex, Set, parse_statements
-
 
 ACRONYMS = set(['ipi', 'isni', 'gid', 'url', 'iso', 'isrc', 'iswc', 'cdtoc'])
 SPECIAL_NAMES = {'coverart': 'CoverArt'}
@@ -170,7 +170,8 @@ def parse_sql(sql, schema='musicbrainz'):
             schema = statement.get_value().split(',')[0].strip()
 
         elif isinstance(statement, CreateTable):
-            tables.append(parse_create_table(statement, schema))
+            if not statement.is_partition_of():
+                tables.append(parse_create_table(statement, schema))
 
         elif isinstance(statement, CreateType):
             types.append(parse_create_type(statement, schema))
@@ -197,7 +198,7 @@ def generate_models_header():
     yield 'from sqlalchemy.ext.hybrid import hybrid_property'
     yield 'from sqlalchemy.orm import relationship, composite, backref'
     yield 'from mbdata.types import PartialDate, Point, Cube as _Cube, regexp, UUID, SMALLINT, BIGINT, JSONB'
-    yield 'from typing import Any'
+    yield 'from typing import Any, Union'
     yield ''
     yield 'import mbdata.config'
     yield 'mbdata.config.freeze()'
@@ -212,9 +213,9 @@ def generate_models_header():
     yield '    Base = declarative_base()'
     yield ''
     yield 'if mbdata.config.use_cube:'
-    yield '    Cube = _Cube'
+    yield '    Cube = _Cube  # type: Union[_Cube, Text]'
     yield 'else:'
-    yield '    Cube = Text  # noqa: F811'
+    yield '    Cube = Text'
     yield ''
     yield ''
     yield 'def apply_schema(name, schema):'
@@ -229,7 +230,7 @@ def generate_models_header():
 def make_type_mapper(types):
     mapping = dict(TYPE_MAPPING)
     for type in types:
-        mapping[type.name.upper()] = 'Enum({0}, name={1!r}, schema=mbdata.config.schemas.get({2!r}, {2!r}))'.format(', '.join(('{0!r}'.format(str(l)) for l in type.labels)), str(type.name.upper()), type.schema)
+        mapping[type.name.upper()] = 'Enum({0}, name={1!r}, schema=mbdata.config.schemas.get({2!r}, {2!r}))'.format(', '.join(('{0!r}'.format(str(label)) for label in type.labels)), str(type.name.upper()), type.schema)
 
     def inner(type):
         new_type = mapping.get(type.upper())
@@ -327,6 +328,16 @@ def generate_models_from_sql(tables, types, indexes):
         if table.name == 'old_editor_name':
             continue
 
+        if table.name == 'artist_release':
+            for column in table.columns:
+                if column.name in {'artist', 'release'}:
+                    column.primary_key = True
+
+        if table.name == 'artist_release_group':
+            for column in table.columns:
+                if column.name in {'artist', 'release_group'}:
+                    column.primary_key = True
+
         model_name = format_model_name(table.name)
         yield 'class {0}(Base):'.format(model_name)
         yield '    __tablename__ = {0!r}'.format(str(table.name))
@@ -384,6 +395,8 @@ def generate_models_from_sql(tables, types, indexes):
                         backref = 'artists', 'order_by="ArtistCreditName.position"'
                     if table.schema == 'musicbrainz' and table.name == 'track' and column.name == 'medium':
                         backref = 'tracks', 'order_by="Track.position"'
+                    if table.schema == 'musicbrainz' and table.name == 'track' and column.name == 'recording':
+                        backref = 'tracks'
                     if table.schema == 'musicbrainz' and table.name == 'medium' and column.name == 'release':
                         backref = 'mediums', 'order_by="Medium.position"'
                     if table.schema == 'musicbrainz' and table.name == 'isrc' and column.name == 'recording':
@@ -425,7 +438,7 @@ def generate_models_from_sql(tables, types, indexes):
                     params.insert(0, repr(str(column.name)))
                     foreign_keys.append((attribute_name, relationship_name, foreign_key, backref, column.nullable))
                     if table.name.startswith('l_') and column.name in ('entity0', 'entity1'):
-                        if table.name == 'l_{0}_{0}'.format(foreign_key.table, foreign_key.table):
+                        if table.name == 'l_{0}_{0}'.format(foreign_key.table):
                             aliases.append((column.name, foreign_key.table + column.name[-1]))
                             aliases.append((attribute_name, foreign_key.table + column.name[-1] + '_id'))
                         else:

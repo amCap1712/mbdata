@@ -2,17 +2,14 @@
 MusicBrainz Database Tools
 ##########################
 
-|pypi badge| |ci badge|
+|pypi badge|
 
 .. |pypi badge| image:: https://badge.fury.io/py/mbdata.svg
     :target: https://badge.fury.io/py/mbdata
 
-.. |ci badge| image:: https://code.oxygene.sk/lukas/mbdata/badges/master/pipeline.svg
-    :target: https://code.oxygene.sk/lukas/mbdata/commits/master
-
-****************************
-MusicBrainz Database Replica
-****************************
+********************************
+MusicBrainz Database Replication
+********************************
 
 This repository now contains a collection of scripts for managing a
 replica of the MusicBrainz database. These used to be called "mbslave",
@@ -25,13 +22,11 @@ easier to use the replication tools provided by MusicBrainz itself.
 Installation
 ============
 
-1. Make sure you have `Python <https://python.org/>`__ and `psycopg2 <https://initd.org/psycopg/>`__ installed.
-   On Debian and Ubuntu, that means installing these packages::
+1. You need to have `Python 3.x <https://python.org/>`__ installed on your system.
+   Then you can use `pipx <https://pypa.github.io/pipx/>`__ to install this package::
 
-       sudo apt install python python-pip python-psycopg2
-       pip install -U mbdata  # if you don't have it installed already
-
-   The command will install the ``mbslave`` script into ``$HOME/.local/bin``.
+       sudo apt install python3 pipx
+       pipx install 'mbdata[replication]'
 
 2. Get an API token on the `MetaBrainz website <https://metabrainz.org/supporters/account-type>`__.
 
@@ -52,7 +47,6 @@ Installation
        sudo su - postgres
        createuser musicbrainz
        createdb -l C -E UTF-8 -T template0 -O musicbrainz musicbrainz
-       createlang plpgsql musicbrainz
        psql musicbrainz -c 'CREATE EXTENSION cube;'
        psql musicbrainz -c 'CREATE EXTENSION earthdistance;'
 
@@ -116,6 +110,14 @@ Schema Upgrade
 When the MusicBrainz database schema changes, the replication will stop working.
 This is usually announced on the `MusicBrainz blog <http://blog.musicbrainz.org/>`__.
 When it happens, you need to upgrade the database.
+
+Release 2021-05-17 (26)
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Run the upgrade scripts::
+
+    mbslave psql -f updates/schema-change/26.slave.sql
+    echo 'UPDATE replication_control SET current_schema_sequence = 26;' | mbslave psql
 
 2020-05-18 Upgrade to PostgreSQL 12
 -----------------------------------
@@ -243,66 +245,6 @@ If you need sample MusicBrainz data for your tests, you can use
 
     from mbdata.sample_data import create_sample_data
     create_sample_data(session)
-
-********
-HTTP API
-********
-
-**Note:** This is very much a work in progress. It is not ready to use
-yet. Any help is welcome.
-
-There is also a HTTP API, which you can use to access the MusicBrainz
-data using JSON or XML formats over HTTP. This is useful if you want to
-abstract away the MusicBrainz PostgreSQL database.
-
-Installation:
-
-.. code:: sh
-
-    virtualenv --system-site-packages e
-    . e/bin/activate
-    pip install -r requirements.txt
-    python setup.py develop
-
-Configuration:
-
-.. code:: sh
-
-    cp settings.py.sample settings.py
-    vim settings.py
-
-Start the development server:
-
-.. code:: sh
-
-    MBDATA_API_SETTINGS=`pwd`/settings.py python -m mbdata.api.app
-
-Query the API:
-
-.. code:: sh
-
-    curl 'http://127.0.0.1:5000/v1/artist/get?id=b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d'
-
-For production use, you should use server software like
-`uWSGI <http://projects.unbit.it/uwsgi/>`__ and
-`nginx <http://nginx.org/>`__ to run the service.
-
-**********
-Solr Index
-**********
-
-Create a minimal Solr configuration:
-
-.. code:: sh
-
-    ./bin/create_solr_home.py -d /tmp/mbdata_solr
-
-Start Solr:
-
-.. code:: sh
-
-    cd /path/to/solr-4.6.1/example
-    java -Dsolr.solr.home=/tmp/mbdata_solr -jar start.jar
 
 ***********
 Development

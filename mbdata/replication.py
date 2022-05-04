@@ -245,7 +245,7 @@ def load_tar(filename, db, config, ignored_schemas, ignored_tables):
             logger.info("Skipping %s (table %s already contains data)", name, fulltable)
             continue
         logger.info("Loading %s to %s", name, fulltable)
-        cursor.copy_from(tar.extractfile(member), fulltable)
+        cursor.copy_expert('COPY {} FROM STDIN'.format(fulltable), tar.extractfile(member))
         db.commit()
 
 
@@ -468,11 +468,10 @@ def mbslave_sync_main(config, args):
 
     hook_class = ReplicationHook
 
-    cursor = db.cursor()
-    cursor.execute("SELECT current_schema_sequence, current_replication_sequence FROM %s.replication_control" % config.schemas.name('musicbrainz'))
-    schema_seq, replication_seq = cursor.fetchone()
-
     while True:
+        cursor = db.cursor()
+        cursor.execute("SELECT current_schema_sequence, current_replication_sequence FROM %s.replication_control" % config.schemas.name('musicbrainz'))
+        schema_seq, replication_seq = cursor.fetchone()
         replication_seq += 1
         hook = hook_class(config, db, config)
         tmp = download_packet(base_url, token, replication_seq)
@@ -541,7 +540,7 @@ def mbslave_psql_main(config, args):
         if args.sql_file:
             sql_file = es.enter_context(tempfile.NamedTemporaryFile(suffix='.sql'))
             with open(locate_sql_file(args.sql_file), 'rb') as input_sql_file:
-                lines = [l.decode('utf8') for l in input_sql_file]
+                lines = [line.decode('utf8') for line in input_sql_file]
                 for line in remap_schema(config, lines):
                     sql_file.write(line.encode('utf8'))
             sql_file.flush()

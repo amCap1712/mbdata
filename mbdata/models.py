@@ -9,7 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, composite, backref
 from mbdata.types import PartialDate, Point, Cube as _Cube, regexp, UUID, SMALLINT, BIGINT, JSONB
-from typing import Any
+from typing import Any, Union
 
 import mbdata.config
 mbdata.config.freeze()
@@ -24,9 +24,9 @@ else:
     Base = declarative_base()
 
 if mbdata.config.use_cube:
-    Cube = _Cube
+    Cube = _Cube  # type: Union[_Cube, Text]
 else:
-    Cube = Text  # noqa: F811
+    Cube = Text
 
 
 def apply_schema(name, schema):
@@ -702,6 +702,44 @@ class ArtistType(Base):
     gid = Column(UUID, nullable=False)
 
     parent = relationship('ArtistType', foreign_keys=[parent_id])
+
+
+class ArtistRelease(Base):
+    __tablename__ = 'artist_release'
+    __table_args__ = (
+        {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
+    )
+
+    is_track_artist = Column(Boolean, nullable=False)
+    artist_id = Column('artist', Integer, ForeignKey(apply_schema('artist.id', 'musicbrainz'), name='artist_release_fk_artist'), nullable=False, primary_key=True)
+    first_release_date = Column(Integer)
+    catalog_numbers = Column(String)
+    country_code = Column(CHAR(2))
+    barcode = Column(BIGINT)
+    sort_character = Column(CHAR(1), nullable=False)
+    release_id = Column('release', Integer, ForeignKey(apply_schema('release.id', 'musicbrainz'), name='artist_release_fk_release'), nullable=False, primary_key=True)
+
+    artist = relationship('Artist', foreign_keys=[artist_id], innerjoin=True)
+    release = relationship('Release', foreign_keys=[release_id], innerjoin=True)
+
+
+class ArtistReleaseGroup(Base):
+    __tablename__ = 'artist_release_group'
+    __table_args__ = (
+        {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
+    )
+
+    is_track_artist = Column(Boolean, nullable=False)
+    artist_id = Column('artist', Integer, ForeignKey(apply_schema('artist.id', 'musicbrainz'), name='artist_release_group_fk_artist'), nullable=False, primary_key=True)
+    unofficial = Column(Boolean, nullable=False)
+    primary_type = Column(SMALLINT)
+    secondary_types = Column(SMALLINT)
+    first_release_date = Column(Integer)
+    sort_character = Column(CHAR(1), nullable=False)
+    release_group_id = Column('release_group', Integer, ForeignKey(apply_schema('release_group.id', 'musicbrainz'), name='artist_release_group_fk_release_group'), nullable=False, primary_key=True)
+
+    artist = relationship('Artist', foreign_keys=[artist_id], innerjoin=True)
+    release_group = relationship('ReleaseGroup', foreign_keys=[release_group_id], innerjoin=True)
 
 
 class AutoeditorElection(Base):
@@ -5368,6 +5406,28 @@ class EditorCollection(Base):
     type = relationship('EditorCollectionType', foreign_keys=[type_id], innerjoin=True)
 
 
+class EditorCollectionGIDRedirect(Base):
+    __tablename__ = 'editor_collection_gid_redirect'
+    __table_args__ = (
+        Index('editor_collection_gid_redirect_idx_new_id', 'new_id'),
+        {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
+    )
+
+    gid = Column(UUID, nullable=False, primary_key=True)
+    redirect_id = Column('new_id', Integer, ForeignKey(apply_schema('editor_collection.id', 'musicbrainz'), name='editor_collection_gid_redirect_fk_new_id'), nullable=False)
+    created = Column(DateTime(timezone=True), server_default=sql.func.now())
+
+    redirect = relationship('EditorCollection', foreign_keys=[redirect_id], innerjoin=True)
+
+    @hybrid_property
+    def new_id(self):
+        return self.redirect_id
+
+    @hybrid_property
+    def editor_collection(self):
+        return self.redirect
+
+
 class EditorCollectionType(Base):
     __tablename__ = 'editor_collection_type'
     __table_args__ = (
@@ -5994,6 +6054,34 @@ class PlaceGIDRedirect(Base):
     @hybrid_property
     def place(self):
         return self.redirect
+
+
+class PlaceMeta(Base):
+    __tablename__ = 'place_meta'
+    __table_args__ = (
+        {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
+    )
+
+    id = Column('id', Integer, ForeignKey(apply_schema('place.id', 'musicbrainz'), name='place_meta_fk_id', ondelete='CASCADE'), nullable=False, primary_key=True)
+    rating = Column(SMALLINT)
+    rating_count = Column(Integer)
+
+    place = relationship('Place', foreign_keys=[id], innerjoin=True, backref=backref('meta', uselist=False))
+
+
+class PlaceRatingRaw(Base):
+    __tablename__ = 'place_rating_raw'
+    __table_args__ = (
+        Index('place_rating_raw_idx_editor', 'editor'),
+        {'schema': mbdata.config.schemas.get('musicbrainz', 'musicbrainz')}
+    )
+
+    place_id = Column('place', Integer, ForeignKey(apply_schema('place.id', 'musicbrainz'), name='place_rating_raw_fk_place'), nullable=False, primary_key=True)
+    editor_id = Column('editor', Integer, ForeignKey(apply_schema('editor.id', 'musicbrainz'), name='place_rating_raw_fk_editor'), nullable=False, primary_key=True)
+    rating = Column(SMALLINT, nullable=False)
+
+    place = relationship('Place', foreign_keys=[place_id], innerjoin=True)
+    editor = relationship('Editor', foreign_keys=[editor_id], innerjoin=True)
 
 
 class PlaceTag(Base):
@@ -7201,7 +7289,7 @@ class Track(Base):
     last_updated = Column(DateTime(timezone=True), server_default=sql.func.now())
     is_data_track = Column(Boolean, nullable=False, default=False, server_default=sql.false())
 
-    recording = relationship('Recording', foreign_keys=[recording_id], innerjoin=True)
+    recording = relationship('Recording', foreign_keys=[recording_id], innerjoin=True, backref=backref('tracks'))
     medium = relationship('Medium', foreign_keys=[medium_id], innerjoin=True, backref=backref('tracks', order_by="Track.position"))
     artist_credit = relationship('ArtistCredit', foreign_keys=[artist_credit_id], innerjoin=True)
 

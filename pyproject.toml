@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "mbdata"
+version = "26.0.1"
+description = ""
+authors = ["Lukáš Lalinský <lalinsky@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+SQLAlchemy = {version = "^1.4.29", optional = true}
+lxml = {version = "^4.7.1", optional = true}
+psycopg2 = {version = "^2.9.2", optional = true}
+six = "^1.16.0"
+
+[tool.poetry.dev-dependencies]
+nose = "^1.3.7"
+flake8 = "^4.0.1"
+psycopg2 = "^2.9.2"
+sqlparse = "^0.4.2"
+
+[tool.poetry.extras]
+replication = ["psycopg2"]
+search = ["lxml"]
+models = ["SQLAlchemy"]
+
+[tool.poetry.scripts]
+mbslave = "mbdata.replication:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

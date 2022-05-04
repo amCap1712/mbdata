@@ -1,9 +1,12 @@
-Version 26.0.dev3
-=================
+Version 26.0.1
+==============
 
-- Updated to MusicBrainz Server v-2020-12-16 which already supports
-  the earliest parts of the future MusicBrainz database schema 26:
-  first release date of recording/release and more...
+- Added ``Recording.tracks`` relationship to the SQLAlchemy models.
+
+Version 26.0.0
+==============
+
+- Support for MusicBrainz database schema 26.
 
 Version 25.0.4
 ==============
