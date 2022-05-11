@@ -7,8 +7,8 @@ rm -rf sql
 rm -rf /tmp/mbserver-clone
 mkdir /tmp/mbserver-clone
 
-curl -L -o /tmp/mbserver-clone/master.tar.gz https://github.com/metabrainz/musicbrainz-server/archive/master.tar.gz
-tar -x -f /tmp/mbserver-clone/master.tar.gz --strip-components=2 --wildcards 'musicbrainz-server-master/admin/sql/*'
+curl -L -o /tmp/mbserver-clone/schema-change-2022-q2.tar.gz https://github.com/metabrainz/musicbrainz-server/archive/refs/heads/schema-change-2022-q2.tar.gz
+tar -x -f /tmp/mbserver-clone/schema-change-2022-q2.tar.gz --strip-components=2 --wildcards 'musicbrainz-server-schema-change-2022-q2/admin/sql/*'
 rm -rf /tmp/mbserver-clone
 
 echo '\set ON_ERROR_STOP 1' >sql/CreateCollateIndexes.sql
