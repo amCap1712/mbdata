@@ -1,3 +1,9 @@
+Version 27.0.dev2
+=================
+
+- Updated to the development version of MusicBrainz database schema 27
+  https://github.com/metabrainz/musicbrainz-server/commit/0b7ff5556524e68371a38734eee6d86d18ceffee
+
 Version 26.0.1
 ==============
 
